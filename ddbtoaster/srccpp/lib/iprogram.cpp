@@ -1,5 +1,7 @@
 #include "iprogram.hpp"
 #include "event.hpp"
+#include <iostream>
+#include <time.h>
 
 namespace dbtoaster {
 
@@ -33,6 +35,7 @@ void IProgram::run( bool async ) {
  */
 IProgram::snapshot_t IProgram::get_snapshot()
 {
+
 	if( !is_finished() )
 	{
 		request_snapshot();
@@ -140,5 +143,45 @@ IProgram::snapshot_t IProgram::wait_for_snapshot()
 	snapshot = snapshot_t();
 	return result;
 }
+
+void IProgram::log_timestamp(struct timespec val) {
+    log_buffer.push_back(val);
+}
+
+struct timespec diff(struct timespec start, struct timespec end)  {
+    struct timespec temp;
+    if ((end.tv_nsec-start.tv_nsec) < 0) {
+      temp.tv_sec = end.tv_sec-start.tv_sec-1;
+      temp.tv_nsec = 1000000000+end.tv_nsec-start.tv_nsec;
+    } else {
+      temp.tv_sec = end.tv_sec-start.tv_sec;
+      temp.tv_nsec = end.tv_nsec-start.tv_nsec;
+    }
+    return temp;
+}
+
+void IProgram::print_log_buffer() {
+  struct timespec start, end, diff1, diff2;
+
+	if (log_buffer.size() < 2) {
+		cerr << "Log buffer is empty. Did you forget to set --log-count?" << endl;
+		return;
+	}
+
+	start = log_buffer[0];
+	for (auto it = log_buffer.begin() + 1; it != log_buffer.end(); ++it)  {
+		end = *it;
+		diff1 = diff(log_buffer[0], end);
+		diff2 = diff(start, end);
+
+		std::cout << (long)(diff1.tv_sec * 1e9 + diff1.tv_nsec) << "\t" <<
+		  (long)(diff2.tv_sec * 1e9 + diff2.tv_nsec) << std::endl;
+
+		start = *it;
+	}
+
+	log_buffer.clear();
+}
+
 
 }

@@ -303,11 +303,11 @@ void ProgramBase::process_stream_event(const event_t& _evt) {
 
 	process_event(_evt, false);
 
+	// buffer output and only print after execution
 	if (log_count_every && (tuple_count % log_count_every == 0)) {
-		struct timeval tp;
-		gettimeofday(&tp, NULL);
-		cout << tuple_count << " tuples processed at " << tp.tv_sec << "s+"
-				<< tp.tv_usec << "us" << endl;
+	    struct timespec val;
+	    clock_gettime(CLOCK_THREAD_CPUTIME_ID, &val);
+	    log_timestamp(val);
 	}
 	tuple_count += 1;
 

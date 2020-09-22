@@ -14,7 +14,13 @@
 #include <future>
 #include <functional>
 #include <cassert>
+#include <string>
+#include <vector>
+#include <time.h>
+#include <sys/time.h>
 #include "serialization.hpp"
+
+using namespace std;
 
 namespace dbtoaster {
 
@@ -73,6 +79,18 @@ public:
      *         the results of the program.
      */
     snapshot_t get_snapshot();
+
+    /**
+     * Print content of log buffer (deltas and absolute time stamps)
+     */
+    void print_log_buffer();
+
+    /**
+     * Resize the log buffer to avoid allocations during latency measurements
+     */
+    void resize_log_buffer(size_t size) {
+        log_buffer.resize(size);
+    };
 
 protected:
     /**
@@ -134,6 +152,12 @@ protected:
      */
     snapshot_t wait_for_snapshot();
 
+
+    /**
+     * Log a timestamp after after completing a tuple processing batch
+     */
+    void log_timestamp(struct timespec val);
+
 private:
     bool running;
     bool finished;
@@ -145,6 +169,8 @@ private:
 
     bool snapshot_request;
     snapshot_t snapshot;
+    std::vector<struct timespec> log_buffer;
+
 };
 }
 
