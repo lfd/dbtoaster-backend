@@ -4,6 +4,10 @@
 
 #include "filepath.hpp"
 
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/mman.h>
+
 using namespace ::dbtoaster::runtime;
 
 namespace dbtoaster {
@@ -23,8 +27,19 @@ dbt_file_source::dbt_file_source(
 {
 	if ( file_exists( path ) )
 	{
-		source_stream = std::shared_ptr<file_stream>(new file_stream(path.c_str(), file_stream::in));
-		if( runtime_options::verbose() )
+		int fd = open(path.c_str(), O_RDONLY);
+		size = lseek(fd, 0, SEEK_END);
+
+		#ifdef __linux__
+		mmap(data, size, PROT_READ|PROT_WRITE, MAP_FILE|MAP_PRIVATE|MAP_POPULATE, fd, 0);
+		#else
+		mmap(data, size, PROT_READ|PROT_WRITE, MAP_FILE|MAP_PRIVATE, fd, 0);
+	        #endif
+		if (!data) {
+			std::cerr << "Internal error: mmap of existing file failed" << std::endl;
+			exit(-1);
+		}
+	  	if( runtime_options::verbose() )
 			std::cerr << "reading from " << path
 				 << " with 1 adaptors" << std::endl;
 	}
@@ -33,20 +48,8 @@ dbt_file_source::dbt_file_source(
 }
 
 void dbt_file_source::read_source_events(std::shared_ptr<std::list<event_t> > eventList, std::shared_ptr<std::list<event_t> > eventQue) {
-	//read the whole file
-	source_stream->seekg(0, std::ios::end);
-	size_t bufferLength = source_stream->tellg();
-	size_t extra_buffer = 0;
-	//reserving some buffer for a possible missing delimiter at the end
-	if ( frame_info.type == delimited ) {
-		extra_buffer = frame_info.delimiter.size();
-	}
-	char* buffer = new char[bufferLength+1+extra_buffer];
-	char* buffer_end = buffer + bufferLength;
-	*buffer_end = '\0';
-	source_stream->seekg(0, std::ios::beg);
-	source_stream->read(buffer,bufferLength);
-	source_stream->close();
+	char* buffer = data;
+	char* buffer_end = data + size;
 
 	char* start_event_pos = buffer;
 	char* end_event_pos = buffer;
@@ -65,15 +68,11 @@ void dbt_file_source::read_source_events(std::shared_ptr<std::list<event_t> > ev
 		const char* delim = frame_info.delimiter.c_str();
 		size_t delim_size = frame_info.delimiter.size();
 
-		//add delimeter at the end, if it does not exist
+		// Check if delimiter is present at the end
 		for(size_t delim_idx = 0; delim_idx < delim_size; ++delim_idx) {
 			if(*(buffer_end-1-delim_idx) != *(delim+delim_size-1)) {
-				for(delim_idx = 0; delim_idx < delim_size; ++delim_idx) {
-					*buffer_end = *(delim+delim_idx);
-					buffer_end+=1;
-				}
-				*buffer_end = '\0';
-				break;
+				std::cerr << "Wrong delimiter at EOF, go fix your data " << std::endl;
+				exit(-1);
 			}
 		}
 
