@@ -170,7 +170,7 @@ private:
     bool snapshot_request;
     snapshot_t snapshot;
     std::vector<struct timespec> log_buffer;
-
+    size_t log_idx;
 };
 }
 

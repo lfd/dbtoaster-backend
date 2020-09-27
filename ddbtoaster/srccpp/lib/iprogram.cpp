@@ -145,7 +145,7 @@ IProgram::snapshot_t IProgram::wait_for_snapshot()
 }
 
 void IProgram::log_timestamp(struct timespec val) {
-    log_buffer.push_back(val);
+	log_buffer[log_idx++] = val;
 }
 
 struct timespec diff(struct timespec start, struct timespec end)  {
@@ -161,7 +161,7 @@ struct timespec diff(struct timespec start, struct timespec end)  {
 }
 
 void IProgram::print_log_buffer() {
-  struct timespec start, end, diff1, diff2;
+  struct timespec start, diff1, diff2;
 
 	if (log_buffer.size() < 2) {
 		cerr << "Log buffer is empty. Did you forget to set --log-count?" << endl;
@@ -169,15 +169,14 @@ void IProgram::print_log_buffer() {
 	}
 
 	start = log_buffer[0];
-	for (auto it = log_buffer.begin() + 1; it != log_buffer.end(); ++it)  {
-		end = *it;
-		diff1 = diff(log_buffer[0], end);
-		diff2 = diff(start, end);
+	for (size_t i=1; i < log_idx; i++)  {
+		diff1 = diff(log_buffer[0], log_buffer[i]);
+		diff2 = diff(start, log_buffer[i]);
 
 		std::cout << (long)(diff1.tv_sec * 1e9 + diff1.tv_nsec) << "\t" <<
 		  (long)(diff2.tv_sec * 1e9 + diff2.tv_nsec) << std::endl;
 
-		start = *it;
+		start = log_buffer[i];
 	}
 
 	log_buffer.clear();

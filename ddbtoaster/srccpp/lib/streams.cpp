@@ -25,34 +25,73 @@ source::source(frame_descriptor& f, std::shared_ptr<stream_adaptor> a) : frame_i
 dbt_file_source::dbt_file_source(
 		const std::string& path, frame_descriptor& f, std::shared_ptr<stream_adaptor> a): source(f,a)
 {
-	if ( file_exists( path ) )
-	{
-		int fd = open(path.c_str(), O_RDONLY);
-		size = lseek(fd, 0, SEEK_END);
+  int flags = MAP_FILE|MAP_PRIVATE; // DBToaster may modify the mapped data, don't push changes back top disk
+#if defined(__linux__)
+		flags |= MAP_POPULATE; // Read data from block device on mmap
+#endif
 
-		#ifdef __linux__
-		mmap(data, size, PROT_READ|PROT_WRITE, MAP_FILE|MAP_PRIVATE|MAP_POPULATE, fd, 0);
-		#else
-		mmap(data, size, PROT_READ|PROT_WRITE, MAP_FILE|MAP_PRIVATE, fd, 0);
-	        #endif
-		if (!data) {
+		if ( !file_exists( path ) ) {
+		  std::cerr << "File not found: " << path << std::endl;
+		  exit(-1);
+		}
+
+#if defined(__rtems__)
+		source_stream = std::shared_ptr<file_stream>(new file_stream(path.c_str(),
+									     file_stream::in));
+		//read the whole file
+		source_stream->seekg(0, std::ios::end);
+		bufferLength = source_stream->tellg();
+		size_t extra_buffer = 0;
+		//reserving some buffer for a possible missing delimiter at the end
+		if ( frame_info.type == delimited ) {
+		  extra_buffer = frame_info.delimiter.size();
+		}
+		buffer = new char[bufferLength+1+extra_buffer];
+		char* buffer_end = buffer + bufferLength;
+		*buffer_end = '\0';
+		source_stream->seekg(0, std::ios::beg);
+		source_stream->read(buffer, bufferLength);
+		source_stream->close();
+#else
+		int fd = open(path.c_str(), O_RDONLY);
+		bufferLength = lseek(fd, 0, SEEK_END);
+
+		buffer = static_cast<char*>(mmap(NULL, bufferLength, PROT_READ|PROT_WRITE, flags, fd, 0));
+		close(fd);
+
+		if (!buffer) {
 			std::cerr << "Internal error: mmap of existing file failed" << std::endl;
 			exit(-1);
 		}
+#endif
+#if !defined(__linux__) && !defined(__rtems__)
+		// Touch every page once on systems that don't support pre-populating maps
+		// to ascertain (on a best-effort basis) that data are in memory
+		// (if MLOCKALL is enabled, the best-effort turns into a guarantee)
+		long psize = sysconf(_SC_PAGESIZE);
+                size_t num_pages = bufferLength/psize + (bufferLength % psize == 0 ? 0 : 1);
+
+                volatile char c;
+                for (size_t i = 0; i < num_pages; i++)
+			c = *(buffer + i * psize);
+
+		if (!buffer) {
+			std::cerr << "Internal error: mmap of existing file failed" << std::endl;
+			exit(-1);
+		}
+#endif
 	  	if( runtime_options::verbose() )
 			std::cerr << "reading from " << path
 				 << " with 1 adaptors" << std::endl;
-	}
-	else
-		std::cerr << "File not found: " << path << std::endl;
 }
 
-void dbt_file_source::read_source_events(std::shared_ptr<std::list<event_t> > eventList, std::shared_ptr<std::list<event_t> > eventQue) {
-	char* buffer = data;
-	char* buffer_end = data + size;
 
+void dbt_file_source::read_source_events(std::shared_ptr<std::list<event_t> > eventList,
+					 std::shared_ptr<std::list<event_t> > eventQue) {
 	char* start_event_pos = buffer;
 	char* end_event_pos = buffer;
+	char* buffer_end = buffer + bufferLength;
+
 	if (frame_info.type == fixed_size) {
 		size_t frame_size = frame_info.size;
 		char tmp;
@@ -88,7 +127,6 @@ void dbt_file_source::read_source_events(std::shared_ptr<std::list<event_t> > ev
 	} else {
 		std::cerr << "invalid frame type" << std::endl;
 	}
-	delete[] buffer;
 }
 /******************************************************************************
 	source_multiplexer
@@ -128,7 +166,10 @@ void source_multiplexer::init_source(size_t batch_size, size_t parallel, bool is
 		std::shared_ptr<source> s = (*it);
 		if(s) {
 			s->init_source();
-			s->read_source_events(eventList, eventQue);
+			// Only read events ahead of time if we deal with an is_table object
+			if (is_table) {
+			  s->read_source_events(eventList, eventQue);
+			}
 		}
 	}
 	if(batch_size > 1) {

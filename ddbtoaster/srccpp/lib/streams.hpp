@@ -63,8 +63,12 @@ struct source
 
 struct dbt_file_source : public source
 {
-    char *data = nullptr;
-    size_t size;
+#if defined(__rtems__)
+    typedef std::ifstream file_stream;
+    std::shared_ptr<file_stream> source_stream;
+#endif
+    char *buffer;
+    size_t bufferLength;
 
     dbt_file_source(const std::string& path, frame_descriptor& f, std::shared_ptr<stream_adaptor> a);
 
