@@ -65,7 +65,9 @@ struct dbt_file_source : public source
 {
     typedef std::ifstream file_stream;
     std::shared_ptr<file_stream> source_stream;
-
+    char *buffer;
+    size_t bufferLength;
+  
     dbt_file_source(const std::string& path, frame_descriptor& f, std::shared_ptr<stream_adaptor> a);
 
     void read_source_events(std::shared_ptr<std::list<event_t> > eventList, std::shared_ptr<std::list<event_t> > eventQue);

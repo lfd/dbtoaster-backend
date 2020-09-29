@@ -30,66 +30,25 @@ dbt_file_source::dbt_file_source(
 	}
 	else
 		std::cerr << "File not found: " << path << std::endl;
-}
 
-void dbt_file_source::read_source_events(std::shared_ptr<std::list<event_t> > eventList, std::shared_ptr<std::list<event_t> > eventQue) {
 	//read the whole file
 	source_stream->seekg(0, std::ios::end);
-	size_t bufferLength = source_stream->tellg();
+	bufferLength = source_stream->tellg();
 	size_t extra_buffer = 0;
 	//reserving some buffer for a possible missing delimiter at the end
 	if ( frame_info.type == delimited ) {
 		extra_buffer = frame_info.delimiter.size();
 	}
-	char* buffer = new char[bufferLength+1+extra_buffer];
+	buffer = new char[bufferLength+1+extra_buffer];
 	char* buffer_end = buffer + bufferLength;
 	*buffer_end = '\0';
 	source_stream->seekg(0, std::ios::beg);
 	source_stream->read(buffer,bufferLength);
 	source_stream->close();
+}
 
-	char* start_event_pos = buffer;
-	char* end_event_pos = buffer;
-	if (frame_info.type == fixed_size) {
-		size_t frame_size = frame_info.size;
-		char tmp;
-		for(; start_event_pos != buffer_end; start_event_pos = end_event_pos) {
-			end_event_pos = start_event_pos+frame_size;
-			tmp = *end_event_pos;
-			*end_event_pos = '\0';
-			adaptor->read_adaptor_events(start_event_pos,eventList,eventQue);
-			*end_event_pos = tmp;
-		}
-	}
-	else if ( frame_info.type == delimited ) {
-		const char* delim = frame_info.delimiter.c_str();
-		size_t delim_size = frame_info.delimiter.size();
-
-		//add delimeter at the end, if it does not exist
-		for(size_t delim_idx = 0; delim_idx < delim_size; ++delim_idx) {
-			if(*(buffer_end-1-delim_idx) != *(delim+delim_size-1)) {
-				for(delim_idx = 0; delim_idx < delim_size; ++delim_idx) {
-					*buffer_end = *(delim+delim_idx);
-					buffer_end+=1;
-				}
-				*buffer_end = '\0';
-				break;
-			}
-		}
-
-		while(start_event_pos) {
-			end_event_pos = strstr(start_event_pos, delim);
-			if(!end_event_pos || end_event_pos == buffer_end) break;
-			*end_event_pos = '\0';
-			adaptor->read_adaptor_events(start_event_pos,eventList,eventQue);
-			start_event_pos = end_event_pos + delim_size;
-		}
-	} else if ( frame_info.type == variable_size ) {
-		std::cerr << "variable size frames not supported" << std::endl;
-	} else {
-		std::cerr << "invalid frame type" << std::endl;
-	}
-	delete[] buffer;
+void dbt_file_source::read_source_events(std::shared_ptr<std::list<event_t> > eventList, std::shared_ptr<std::list<event_t> > eventQue) {
+  // We deliberately don't want to read events up-front
 }
 /******************************************************************************
 	source_multiplexer
