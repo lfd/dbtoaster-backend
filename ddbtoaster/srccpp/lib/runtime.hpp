@@ -67,7 +67,7 @@ namespace dbtoaster {
       }
     };
 
-    enum  optionIndex { UNKNOWN, HELP, VERBOSE, ASYNC, LOGDIR, LOGTRIG, UNIFIED, OUTFILE, BATCH_SIZE, PARALLEL_INPUT, NO_OUTPUT, SAMPLESZ, SAMPLEPRD, STATSFILE, TRACE, TRACEDIR, TRACESTEP, LOGCOUNT };
+    enum  optionIndex { UNKNOWN, HELP, VERBOSE, ASYNC, LOGDIR, LOGTRIG, UNIFIED, OUTFILE, BATCH_SIZE, PARALLEL_INPUT, NO_OUTPUT, SAMPLESZ, SAMPLEPRD, STATSFILE, TRACE, TRACEDIR, TRACESTEP, LOGCOUNT, ITERATIONS };
     const option::Descriptor usage[] = {
     { UNKNOWN,       0,"", "",           Arg::Unknown, "dbtoaster query options:" },
     { HELP,          0,"h","help",       Arg::None,    "  -h       , \t--help  \tlist available options." },
@@ -89,6 +89,7 @@ namespace dbtoaster {
     { TRACEDIR, 0,"","trace-dir",   Arg::Required,"  \t--trace-dir=<arg>  \ttrace output dir." },
     { TRACESTEP,0,"","trace-step",  Arg::Numeric, "  \t--trace-step=<arg>  \ttrace step size." },
     { LOGCOUNT, 0,"","log-count",   Arg::Numeric, "  \t--log-count=<arg>  \tlog tuple count every [arg] updates." },
+    { ITERATIONS, 1,"","iterations",   Arg::Numeric, "  \t--iterations=<arg>  \titerate [arg] times over the dataset." },
     { 0, 0, 0, 0, 0, 0 } };
     
     struct runtime_options {
@@ -109,6 +110,7 @@ namespace dbtoaster {
       unsigned int trace_counter, trace_step;
       std::unordered_set<std::string> traced_maps;
       unsigned int log_tuple_count_every;
+      unsigned int iterations;
 
       // Verbose
       static bool _verbose;

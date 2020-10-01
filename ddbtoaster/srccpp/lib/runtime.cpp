@@ -31,6 +31,7 @@ runtime_options::runtime_options(int argc, char* argv[]) :
   , trace_counter(0)
   , trace_step(0)
   , log_tuple_count_every(0)
+  , iterations(1)
   , async(false)
   , batch_size(0)
   , parallel(MIX_INPUT_TUPLES)
@@ -113,7 +114,10 @@ void runtime_options::process_options(int argc, char* argv[])
 			case LOGCOUNT:
 				log_tuple_count_every = std::atoi(opt.arg);
 				break;
-			case BATCH_SIZE:
+			case ITERATIONS:
+				iterations = std::atoi(opt.arg);
+				break;
+		        case BATCH_SIZE:
 				batch_size = std::atoi(opt.arg);
 				break;
 			case PARALLEL_INPUT:

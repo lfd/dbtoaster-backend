@@ -6,6 +6,7 @@
 namespace dbtoaster {
   class StreamProgram : public Program {
   private:
+	  unsigned int iterations;
 	  void estimate_tuple_count() {
 		  size_t tuples = 0;
 
@@ -30,13 +31,14 @@ namespace dbtoaster {
 		  }
 
 		  // Add one to approximate ceil(...)
-		  resize_log_buffer(tuples/log_count_every + 1);
+		  resize_log_buffer(iterations*(tuples/log_count_every + 1));
 	  };
 
   public:
   StreamProgram(int argc=0, char *argv[] = nullptr): Program(argc, argv) {};
 	  void init() {
 		  table_multiplexer.init_source(run_opts->batch_size, run_opts->parallel, true);
+		  iterations = run_opts->iterations;
 		  process_tables();
 		  data.on_system_ready_event();
 	  };
@@ -55,7 +57,7 @@ namespace dbtoaster {
 
 			  std::shared_ptr<dbt_file_source> s = std::dynamic_pointer_cast<dbt_file_source> (*it);
 
-			  if (!s) {
+			  if (!s || !s->buffer) {
 				  // Not sure how this should happen, but DBToaster makes a
 				  // corresponding checks
 				  cerr << "Internal error: Empty file source?!" << endl;
@@ -72,11 +74,21 @@ namespace dbtoaster {
 			  char* start_event_pos = s->buffer;
 			  char* end_event_pos;
 
-			  while(start_event_pos) {
+			  size_t iter = 0;
+			  char c;
+			  while(iter < iterations) {
 				  end_event_pos = strstr(start_event_pos, delim);
-				  if(!end_event_pos || end_event_pos == s->buffer + s->bufferLength) break;
+
+				  if(!end_event_pos || end_event_pos == s->buffer + s->bufferLength) {
+					  iter +=1;
+                      start_event_pos = s->buffer;
+					  continue;
+				  }
+
+				  c = end_event_pos[0];
 				  *end_event_pos = '\0';
 				  s->adaptor->read_adaptor_events(start_event_pos,eventList,eventQue);
+				  end_event_pos[0] = c;
 
 				  while (!eventList->empty()) {
 					  process_stream_event(eventList->front());

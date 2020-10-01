@@ -325,12 +325,14 @@ bool order_book_adaptor::parse_message(char* data, order_book_message& r) {
 	char* start = data;
 	char* end = start;
 	char action;
+	char c;
 
 	for (int i = 0; i < 5; ++i)
 	{
 	  while ( *end && *end != ',' ) ++end;
 	  if ( start == end ) { return parse_error(data, i); }
 	  if ( *end == '\0' && i != 4 ) { return parse_error(data, i); }
+	  c = end[0];
 	  *end = '\0';
 
 	  switch (i) {
@@ -354,6 +356,7 @@ bool order_book_adaptor::parse_message(char* data, order_book_message& r) {
 	  default: return parse_error(data, i);
 	  }
 
+	  end[0] = c;
 	  start = ++end;
 	}
 	return true;
