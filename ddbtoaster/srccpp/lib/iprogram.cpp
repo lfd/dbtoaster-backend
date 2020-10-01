@@ -144,12 +144,18 @@ IProgram::snapshot_t IProgram::wait_for_snapshot()
 	return result;
 }
 
-void IProgram::log_timestamp(struct timespec val) {
+void IProgram::log_timestamp(tstamp_t val) {
 	log_buffer[log_idx++] = val;
 }
 
-struct timespec diff(struct timespec start, struct timespec end)  {
-    struct timespec temp;
+#ifdef USE_RDTSC
+tstamp_t diff(tstamp_t start, tstamp_t end)  {
+    tstamp_t diff = end - start;
+    return diff;
+}
+#else
+tstamp_t diff(tstamp_t start, tstamp_t end)  {
+    tstamp_t temp;
     if ((end.tv_nsec-start.tv_nsec) < 0) {
       temp.tv_sec = end.tv_sec-start.tv_sec-1;
       temp.tv_nsec = 1000000000+end.tv_nsec-start.tv_nsec;
@@ -159,9 +165,10 @@ struct timespec diff(struct timespec start, struct timespec end)  {
     }
     return temp;
 }
+#endif
 
 void IProgram::print_log_buffer() {
-  struct timespec start, diff1, diff2;
+  tstamp_t start, diff1, diff2;
 
 	if (log_buffer.size() < 2) {
 		cerr << "Log buffer is empty. Did you forget to set --log-count?" << endl;
@@ -173,8 +180,12 @@ void IProgram::print_log_buffer() {
 		diff1 = diff(log_buffer[0], log_buffer[i]);
 		diff2 = diff(start, log_buffer[i]);
 
+#ifdef USE_RDTSC
+		std::cout << diff1 << "\t" << diff2 << std::endl;
+#else
 		std::cout << (long)(diff1.tv_sec * 1e9 + diff1.tv_nsec) << "\t" <<
 		  (long)(diff2.tv_sec * 1e9 + diff2.tv_nsec) << std::endl;
+#endif
 
 		start = log_buffer[i];
 	}

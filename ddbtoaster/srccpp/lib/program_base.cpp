@@ -305,9 +305,7 @@ void ProgramBase::process_stream_event(const event_t& _evt) {
 
 	// buffer output and only print after execution
 	if (log_count_every && (tuple_count % log_count_every == 0)) {
-	    struct timespec val;
-	    clock_gettime(CLOCK_THREAD_CPUTIME_ID, &val);
-	    log_timestamp(val);
+		log_timestamp(get_tstamp());
 	}
 	tuple_count += 1;
 

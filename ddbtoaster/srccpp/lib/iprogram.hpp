@@ -14,6 +14,7 @@
 #include <future>
 #include <functional>
 #include <cassert>
+#include <cstdint>
 #include <string>
 #include <vector>
 #include <time.h>
@@ -26,6 +27,12 @@ namespace dbtoaster {
 
 struct event_t;
 struct tlq_t;
+
+#ifdef USE_RDTSC
+  typedef uint64_t tstamp_t ;
+#else
+  typedef struct timespec tstamp_t;
+#endif
 
 /**
  * IProgram is the base class for executing sql programs. It provides
@@ -45,6 +52,7 @@ public:
         , finished(false)
         , snapshot_ready(true)
         , snapshot_request(false)
+	, log_idx(0)
     {}
     virtual ~IProgram() {
     }
@@ -156,7 +164,7 @@ protected:
     /**
      * Log a timestamp after after completing a tuple processing batch
      */
-    void log_timestamp(struct timespec val);
+    void log_timestamp(tstamp_t val);
 
 private:
     bool running;
@@ -169,7 +177,7 @@ private:
 
     bool snapshot_request;
     snapshot_t snapshot;
-    std::vector<struct timespec> log_buffer;
+    std::vector<tstamp_t> log_buffer;
     size_t log_idx;
 };
 }

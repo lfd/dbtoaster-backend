@@ -17,6 +17,10 @@
 #include <functional>
 #include <iostream>
 #include <fstream>
+#include <cstdint>
+#ifdef USE_RDTSC
+#include <x86intrin.h>
+#endif
 
 #include "runtime.hpp"
 #include "iprogram.hpp"
@@ -195,6 +199,27 @@ protected:
     unsigned int log_count_every;
 
 private:
+#ifdef USE_RDTSC
+    static inline void lfence(void) {
+       asm volatile("lfence" ::: "memory");
+    }
+
+    inline tstamp_t get_tstamp(void) {
+      // Since rdtscp is only supported from Core i7 onwards,
+      // we use rdtsc, and ensure it's serialised by a pre/post mfence
+
+      lfence();
+      tstamp_t val = __rdtsc();
+      lfence();
+      return val;
+    }
+#else
+    inline tstamp_t get_tstamp(void) {
+	tstamp_t val;
+	clock_gettime(CLOCK_THREAD_CPUTIME_ID, &val);
+	return(val);
+    }
+#endif
     void trace(const path& trace_file, bool debug);
     void trace(std::ostream &ofs, bool debug);
 
