@@ -61,7 +61,7 @@ $(OBJ_FILES) : bin/%.o : %.cpp $(HDR_FILES)
 	@mkdir -p ./bin/hpds
 	@mkdir -p ./bin/smhasher
 	@echo Compiling $<
-	@$(G++) -I$(BOOST_INC_DIR) -L$(BOOST_LIB_DIR) -Wall -std=c++11 $(CPP_FLAGS) $(patsubst %,-I %,$(CPP_HDR_PATH)) -O3 -o $(patsubst %.cpp,bin/%.o,$<) -c $<
+	@$(G++) -I$(BOOST_INC_DIR) -L$(BOOST_LIB_DIR) -Wall -std=c++11 $(CPP_FLAGS) $(CXXFLAGS) $(patsubst %,-I %,$(CPP_HDR_PATH)) -O3 -o $(patsubst %.cpp,bin/%.o,$<) -c $<
 
 clean: 
 	rm -rf bin $(LIB_OBJ)
