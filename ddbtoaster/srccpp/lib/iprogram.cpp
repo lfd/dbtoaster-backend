@@ -1,3 +1,4 @@
+/* -*- Mode: C; indent-tabs-mode: t; c-basic-offset: 4; tab-width: 4 -*- */
 #include "iprogram.hpp"
 #include "event.hpp"
 #include <iostream>
@@ -144,50 +145,23 @@ IProgram::snapshot_t IProgram::wait_for_snapshot()
 	return result;
 }
 
-void IProgram::log_timestamp(tstamp_t val) {
-	log_buffer[log_idx++] = val;
+ void IProgram::log_timestamp(tstamp_t val, unsigned long diff, unsigned int tuple_count) {
+	 log_buffer[log_idx++] =  std::make_tuple(val, diff, tuple_count);
 }
 
-#ifdef USE_RDTSC
-tstamp_t diff(tstamp_t start, tstamp_t end)  {
-    tstamp_t diff = end - start;
-    return diff;
-}
-#else
-tstamp_t diff(tstamp_t start, tstamp_t end)  {
-    tstamp_t temp;
-    if ((end.tv_nsec-start.tv_nsec) < 0) {
-      temp.tv_sec = end.tv_sec-start.tv_sec-1;
-      temp.tv_nsec = 1000000000+end.tv_nsec-start.tv_nsec;
-    } else {
-      temp.tv_sec = end.tv_sec-start.tv_sec;
-      temp.tv_nsec = end.tv_nsec-start.tv_nsec;
-    }
-    return temp;
-}
-#endif
 
 void IProgram::print_log_buffer() {
-  tstamp_t start, diff1, diff2;
-
-	if (log_buffer.size() < 2) {
+	if (log_buffer.size() == 0) {
 		cerr << "Log buffer is empty. Did you forget to set --log-count?" << endl;
 		return;
 	}
 
-	start = log_buffer[0];
+	// The first log buffer delta is based on a dummy zero time base, and can be ignored
+	tstamp_t initial = get<0>(log_buffer[1]);
+
 	for (size_t i=1; i < log_idx; i++)  {
-		diff1 = diff(log_buffer[0], log_buffer[i]);
-		diff2 = diff(start, log_buffer[i]);
-
-#ifdef USE_RDTSC
-		std::cout << diff1 << "\t" << diff2 << std::endl;
-#else
-		std::cout << (long)(diff1.tv_sec * 1e9 + diff1.tv_nsec) << "\t" <<
-		  (long)(diff2.tv_sec * 1e9 + diff2.tv_nsec) << std::endl;
-#endif
-
-		start = log_buffer[i];
+		log_t val = log_buffer[i];
+		cout << get<2>(val) << "\t" << diff(initial, get<0>(val)) << "\t" << get<1>(val) << std::endl;
 	}
 
 	log_buffer.clear();

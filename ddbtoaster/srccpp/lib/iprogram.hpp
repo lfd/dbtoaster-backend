@@ -17,6 +17,7 @@
 #include <cstdint>
 #include <string>
 #include <vector>
+#include <tuple>
 #include <time.h>
 #include <sys/time.h>
 #include "serialization.hpp"
@@ -33,6 +34,35 @@ struct tlq_t;
 #else
   typedef struct timespec tstamp_t;
 #endif
+  typedef tuple<tstamp_t, unsigned long, unsigned int> log_t;
+
+
+// diff returns a difference between two tstampt_s in the best possible resolution
+// (defined as non-class methods to ensure they can be inlined)
+#ifdef USE_RDTSC
+  static inline unsigned long diff(tstamp_t start, tstamp_t end)  {
+    tstamp_t diff = end - start;
+    return static_cast<unsigned long>(diff);
+  }
+#else
+#define NSEC_PER_SEC 1000000000
+  static inline unsigned long diff(tstamp_t start, tstamp_t end)  {
+    tstamp_t temp;
+    if ((end.tv_nsec-start.tv_nsec) < 0) {
+      temp.tv_sec = end.tv_sec-start.tv_sec-1;
+      temp.tv_nsec = NSEC_PER_SEC+end.tv_nsec-start.tv_nsec;
+    } else {
+      temp.tv_sec = end.tv_sec-start.tv_sec;
+      temp.tv_nsec = end.tv_nsec-start.tv_nsec;
+    }
+
+    if (temp.tv_sec != 0) {
+		return(static_cast<unsigned long>(temp.tv_sec*NSEC_PER_SEC + temp.tv_nsec));
+    }
+
+    return (static_cast<unsigned long>(temp.tv_nsec));
+}
+#endif
 
 /**
  * IProgram is the base class for executing sql programs. It provides
@@ -48,12 +78,13 @@ public:
     typedef std::shared_ptr<tlq_t> snapshot_t;
 
     IProgram() :
-        running(false)
+	buffer_frac(100)
+        , running(false)
         , finished(false)
         , snapshot_ready(true)
         , snapshot_request(false)
 	, log_idx(0)
-    {}
+  {}
     virtual ~IProgram() {
     }
 
@@ -97,7 +128,7 @@ public:
      * Resize the log buffer to avoid allocations during latency measurements
      */
     void resize_log_buffer(size_t size) {
-        log_buffer.resize(size);
+        log_buffer.resize(ceil(buffer_frac*size/100));
     };
 
 protected:
@@ -164,7 +195,8 @@ protected:
     /**
      * Log a timestamp after after completing a tuple processing batch
      */
-    void log_timestamp(tstamp_t val);
+  void log_timestamp(tstamp_t val, unsigned long diff, unsigned int tuple_count);
+  int buffer_frac;
 
 private:
     bool running;
@@ -177,7 +209,7 @@ private:
 
     bool snapshot_request;
     snapshot_t snapshot;
-    std::vector<tstamp_t> log_buffer;
+    std::vector<log_t> log_buffer;
     size_t log_idx;
 };
 }

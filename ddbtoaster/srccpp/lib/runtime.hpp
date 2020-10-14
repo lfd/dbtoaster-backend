@@ -67,7 +67,8 @@ namespace dbtoaster {
       }
     };
 
-    enum  optionIndex { UNKNOWN, HELP, VERBOSE, ASYNC, LOGDIR, LOGTRIG, UNIFIED, OUTFILE, BATCH_SIZE, PARALLEL_INPUT, NO_OUTPUT, SAMPLESZ, SAMPLEPRD, STATSFILE, TRACE, TRACEDIR, TRACESTEP, LOGCOUNT, ITERATIONS };
+    enum  optionIndex { UNKNOWN, HELP, VERBOSE, ASYNC, LOGDIR, LOGTRIG, UNIFIED, OUTFILE, BATCH_SIZE, PARALLEL_INPUT, NO_OUTPUT, TIMEOUT, SAMPLESZ, SAMPLEPRD, STATSFILE, TRACE, TRACEDIR, TRACESTEP, LOGCOUNT, BUFFER_FRAC, ITERATIONS, LOWERLAT, UPPERLAT };
+
     const option::Descriptor usage[] = {
     { UNKNOWN,       0,"", "",           Arg::Unknown, "dbtoaster query options:" },
     { HELP,          0,"h","help",       Arg::None,    "  -h       , \t--help  \tlist available options." },
@@ -80,6 +81,8 @@ namespace dbtoaster {
     { BATCH_SIZE,    0,"b","batch-size", Arg::Required,"  -b  <arg>, \t--batch-size  \texecute as batches of certain size." },
     { PARALLEL_INPUT,0,"p","par-stream", Arg::Required,"  -p  <arg>, \t--par-stream  \tparallel streams (0=off, 2=deterministic)" },
     { NO_OUTPUT     ,0,"n","no-output",  Arg::None,    "  -n       , \t--no-output  \tdo not print the output result in the standard output" },
+    { TIMEOUT       ,0,"","timeout",    Arg::Numeric,   "  \t--timeout=<arg>  \tstop measurement after [arg] seconds" },
+
     // Statistics profiling parameters
     { SAMPLESZ, 0,"","samplesize",  Arg::Numeric, "  \t--samplesize=<arg>  \tsample window size for trigger profiles." },
     { SAMPLEPRD,0,"","sampleperiod",Arg::Numeric, "  \t--sampleperiod=<arg>  \tperiod length, as number of trigger events." },
@@ -90,6 +93,14 @@ namespace dbtoaster {
     { TRACESTEP,0,"","trace-step",  Arg::Numeric, "  \t--trace-step=<arg>  \ttrace step size." },
     { LOGCOUNT, 0,"","log-count",   Arg::Numeric, "  \t--log-count=<arg>  \tlog tuple count every [arg] updates." },
     { ITERATIONS, 1,"","iterations",   Arg::Numeric, "  \t--iterations=<arg>  \titerate [arg] times over the dataset." },
+    { BUFFER_FRAC, 1,"","buffer-frac",   Arg::Numeric, "  \t--buffer-frac=<arg>  \tReserve fraction [arg] (1-100) of maximal latency buffer space." },
+#ifdef USE_RDTSC
+    { LOWERLAT, 0,"","lower-lat",   Arg::Numeric, "  \t--lower-lat=<arg>  \tlower bound [arg] (TSC cycles) below which latencies are recorded." },
+    { UPPERLAT, 0,"","upper-lat",   Arg::Numeric, "  \t--upper-lat=<arg>  \tupper bound [arg] (TSC cycles) above which latencies are recorded." },
+#else
+    { LOWERLAT, 0,"","lower-lat",   Arg::Numeric, "  \t--lower-lat=<arg>  \tlower bound [arg] (ns) below which latencies are recorded." },
+    { UPPERLAT, 0,"","upper-lat",   Arg::Numeric, "  \t--upper-lat=<arg>  \tupper bound [arg] (ns) above which latencies are recorded." },
+#endif
     { 0, 0, 0, 0, 0, 0 } };
     
     struct runtime_options {
@@ -111,6 +122,8 @@ namespace dbtoaster {
       std::unordered_set<std::string> traced_maps;
       unsigned int log_tuple_count_every;
       unsigned int iterations;
+      unsigned long lower_lat, upper_lat;
+      int buffer_frac;
 
       // Verbose
       static bool _verbose;
@@ -123,7 +136,8 @@ namespace dbtoaster {
       unsigned int parallel;
 
       bool no_output;
-
+      int timeout;
+      
       runtime_options(int argc = 0, char* argv[] = 0);
 
       void process_options(int argc, char* argv[]);

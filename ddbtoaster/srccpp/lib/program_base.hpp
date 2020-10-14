@@ -199,6 +199,8 @@ protected:
     unsigned int log_count_every;
 
 private:
+    unsigned int highlat_count;
+    tstamp_t prev_tstamp;
 #ifdef USE_RDTSC
     static inline void lfence(void) {
        asm volatile("lfence" ::: "memory");
@@ -206,7 +208,7 @@ private:
 
     inline tstamp_t get_tstamp(void) {
       // Since rdtscp is only supported from Core i7 onwards,
-      // we use rdtsc, and ensure it's serialised by a pre/post mfence
+      // we use rdtsc, and ensure it's serialised by a pre/post lfence
 
       lfence();
       tstamp_t val = __rdtsc();

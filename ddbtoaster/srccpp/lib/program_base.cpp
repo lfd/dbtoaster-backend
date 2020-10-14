@@ -1,3 +1,4 @@
+/* -*- Mode: C; indent-tabs-mode: t; c-basic-offset: 4; tab-width: 4 -*- */
 #include "program_base.hpp"
 #include <iomanip>
 
@@ -201,6 +202,8 @@ ProgramBase::ProgramBase(int argc, char* argv[]) :
 	, next_relation_id(0)
 	, tuple_count(0)
 	, log_count_every(run_opts->log_tuple_count_every)
+    , highlat_count(0)
+	, prev_tstamp((tstamp_t) { 0 })
 #ifdef DBT_PROFILE
 	, window_size( run_opts->get_stats_window_size() )
 	, stats_period( run_opts->get_stats_period() )
@@ -213,6 +216,7 @@ ProgramBase::ProgramBase(int argc, char* argv[]) :
 									   stats_period, stats_file))
 #endif // DBT_PROFILE
 {
+	buffer_frac = run_opts->buffer_frac;
 }
 
 void ProgramBase::process_streams() {
@@ -305,7 +309,14 @@ void ProgramBase::process_stream_event(const event_t& _evt) {
 
 	// buffer output and only print after execution
 	if (log_count_every && (tuple_count % log_count_every == 0)) {
-		log_timestamp(get_tstamp());
+			tstamp_t tstamp = get_tstamp();
+			unsigned long tdiff = diff(prev_tstamp, tstamp);
+
+			if (tdiff <= run_opts->lower_lat || tdiff >= run_opts->upper_lat) {
+				log_timestamp(tstamp, tdiff, tuple_count);
+			}
+
+			prev_tstamp = tstamp;
 	}
 	tuple_count += 1;
 

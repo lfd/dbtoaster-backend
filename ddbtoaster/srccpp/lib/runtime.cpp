@@ -2,10 +2,12 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+
 #include "filepath.hpp"
 #include <algorithm>
 #include <string>
 #include <sstream>
+#include <climits>
 
 /******************************************************************************
 	runtime_options
@@ -32,6 +34,9 @@ runtime_options::runtime_options(int argc, char* argv[]) :
   , trace_step(0)
   , log_tuple_count_every(0)
   , iterations(1)
+  , lower_lat(LONG_MAX)
+  , upper_lat(0)
+  , buffer_frac(100)
   , async(false)
   , batch_size(0)
   , parallel(MIX_INPUT_TUPLES)
@@ -114,8 +119,17 @@ void runtime_options::process_options(int argc, char* argv[])
 			case LOGCOUNT:
 				log_tuple_count_every = std::atoi(opt.arg);
 				break;
-			case ITERATIONS:
+			case BUFFER_FRAC:
+				buffer_frac = std::atoi(opt.arg);
+				break;
+		        case ITERATIONS:
 				iterations = std::atoi(opt.arg);
+				break;
+			case LOWERLAT:
+				lower_lat = std::atoi(opt.arg);
+				break;
+			case UPPERLAT:
+				upper_lat = std::atoi(opt.arg);
 				break;
 		        case BATCH_SIZE:
 				batch_size = std::atoi(opt.arg);
