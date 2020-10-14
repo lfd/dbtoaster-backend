@@ -41,6 +41,7 @@ runtime_options::runtime_options(int argc, char* argv[]) :
   , batch_size(0)
   , parallel(MIX_INPUT_TUPLES)
   , no_output(false)
+  , timeout(0)
 {
 	init(argc, argv);
 }
@@ -140,7 +141,10 @@ void runtime_options::process_options(int argc, char* argv[])
 			case NO_OUTPUT:
 				no_output = true;
 				break;
-			case UNKNOWN:
+			case TIMEOUT:
+			        timeout = std::atoi(opt.arg);
+				break;
+		        case UNKNOWN:
 				// not possible because Arg::Unknown returns ARG_ILLEGAL
 				// which aborts the parse with an error
 				break;

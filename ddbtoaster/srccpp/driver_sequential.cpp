@@ -1,5 +1,6 @@
 /* -*- Mode: C; indent-tabs-mode: t; c-basic-offset: 4; tab-width: 4 -*- */
 #include <csignal>
+#include <time.h>
 #include <sys/mman.h>
 #include "StreamProgram.hpp"
 
@@ -28,17 +29,18 @@ int main(int argc, char* argv[]) {
 	dbtoaster::Program::snapshot_t snap;
 
 #if !defined(__rtems__)
-        gp = &p;
-        signal(SIGINT, finish_measurement);
+	gp = &p;
+	signal(SIGINT, finish_measurement);
 #endif
 
 	p.init();
 	p.run(false);
 
 	p.print_log_buffer();
-#if 0
-	snap = p.get_snapshot();
-	DBT_SERIALIZATION_NVP_OF_PTR(cout, snap);
-#endif
+
+	if (!p.is_no_output()) {
+		snap = p.get_snapshot();
+		DBT_SERIALIZATION_NVP_OF_PTR(cout, snap);
+    }
 	return 0;
 }

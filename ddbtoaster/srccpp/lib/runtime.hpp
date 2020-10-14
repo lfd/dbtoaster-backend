@@ -82,7 +82,6 @@ namespace dbtoaster {
     { PARALLEL_INPUT,0,"p","par-stream", Arg::Required,"  -p  <arg>, \t--par-stream  \tparallel streams (0=off, 2=deterministic)" },
     { NO_OUTPUT     ,0,"n","no-output",  Arg::None,    "  -n       , \t--no-output  \tdo not print the output result in the standard output" },
     { TIMEOUT       ,0,"","timeout",    Arg::Numeric,   "  \t--timeout=<arg>  \tstop measurement after [arg] seconds" },
-
     // Statistics profiling parameters
     { SAMPLESZ, 0,"","samplesize",  Arg::Numeric, "  \t--samplesize=<arg>  \tsample window size for trigger profiles." },
     { SAMPLEPRD,0,"","sampleperiod",Arg::Numeric, "  \t--sampleperiod=<arg>  \tperiod length, as number of trigger events." },
@@ -137,7 +136,7 @@ namespace dbtoaster {
 
       bool no_output;
       int timeout;
-      
+
       runtime_options(int argc = 0, char* argv[] = 0);
 
       void process_options(int argc, char* argv[]);

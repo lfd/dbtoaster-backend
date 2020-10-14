@@ -3,6 +3,9 @@
 #ifndef STREAM_PROGRAM_HPP
 #define STREAM_PROGRAM_HPP
 
+#include <time.h>
+#include <csignal>
+
 namespace dbtoaster {
   class StreamProgram : public Program {
   private:
@@ -34,9 +37,44 @@ namespace dbtoaster {
 		  resize_log_buffer(iterations*(tuples/log_count_every + 1));
 	  };
 
+#if !defined(__rtems__) && !defined(__APPLE__)
+	  void set_timeout() {
+		  timer_t timerid;
+		  struct sigevent sev;
+		  struct itimerspec its;
+
+		  sev.sigev_notify = SIGEV_SIGNAL;
+		  sev.sigev_signo = SIGINT;
+		  sev.sigev_value.sival_ptr = &timerid;
+		  if (timer_create(CLOCK_MONOTONIC, &sev, &timerid) == -1) {
+			  std::cerr << "Internal error: timer_create failed" << std::endl;
+			  exit(-1);
+		  }
+
+		  its.it_value.tv_sec = run_opts->timeout;
+		  its.it_value.tv_nsec = 0;
+		  its.it_interval.tv_sec = 0;
+		  its.it_interval.tv_nsec = 0;
+
+		  if (timer_settime(timerid, 0, &its, NULL) == -1) {
+			  std::cerr << "Internal error: could not set timer" << std::endl;
+			  exit(-1);
+		  }
+	  };
+#else
+	  void set_timeout() {
+		  std::cerr << "RTEMS and MacOC do not support timeouts" << std::endl;
+		  exit(-1);
+	  };
+#endif
+
   public:
   StreamProgram(int argc=0, char *argv[] = nullptr): Program(argc, argv) {};
 	  void init() {
+		  if (run_opts->timeout != 0) {
+			  set_timeout();
+		  }
+
 		  table_multiplexer.init_source(run_opts->batch_size, run_opts->parallel, true);
 		  iterations = run_opts->iterations;
 		  process_tables();
