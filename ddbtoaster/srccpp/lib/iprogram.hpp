@@ -19,6 +19,7 @@
 #include <vector>
 #include <tuple>
 #include <time.h>
+#include <unistd.h>
 #include <sys/time.h>
 #include "serialization.hpp"
 
@@ -64,6 +65,17 @@ struct tlq_t;
 }
 #endif
 
+
+#ifdef __linux__
+static void write_check(int fildes, const void *buf, size_t nbyte) {
+	int ret = write(fildes, buf, nbyte);
+	if (ret == -1) {
+		std::cerr << "Internal error: Writing to ftrace file descriptor " << fildes << " failed, exiting" << std::endl;
+		exit(-1);
+	}
+	return;
+}
+#endif
 /**
  * IProgram is the base class for executing sql programs. It provides
  * functionality for running the program in synchronous or asynchronous mode
@@ -197,7 +209,12 @@ protected:
      */
   void log_timestamp(tstamp_t val, unsigned long diff, unsigned int tuple_count);
   int buffer_frac;
-
+#ifdef __linux__
+  int trace_fd;
+  int marker_fd;
+  bool ftrace;
+#endif
+  
 private:
     bool running;
     bool finished;
@@ -211,7 +228,12 @@ private:
     snapshot_t snapshot;
     std::vector<log_t> log_buffer;
     size_t log_idx;
+
+    void start_tracing();
+    void stop_tracing();
 };
 }
+
+#define TRACEPATH "/sys/kernel/tracing/"
 
 #endif /* DBTOASTER_DBT_IPROGRAM_H */

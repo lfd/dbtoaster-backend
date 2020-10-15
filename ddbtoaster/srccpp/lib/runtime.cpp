@@ -37,6 +37,10 @@ runtime_options::runtime_options(int argc, char* argv[]) :
   , lower_lat(LONG_MAX)
   , upper_lat(0)
   , buffer_frac(100)
+#ifdef __linux__
+  , ftrace(false)
+  , ftrace_rep(0)
+#endif
   , async(false)
   , batch_size(0)
   , parallel(MIX_INPUT_TUPLES)
@@ -123,6 +127,14 @@ void runtime_options::process_options(int argc, char* argv[])
 			case BUFFER_FRAC:
 				buffer_frac = std::atoi(opt.arg);
 				break;
+#ifdef __linux__
+		        case FTRACE:
+			        ftrace = true;
+				break;
+			case FTRACE_REP:
+				ftrace_rep = std::atoi(opt.arg);
+				break;
+#endif
 		        case ITERATIONS:
 				iterations = std::atoi(opt.arg);
 				break;

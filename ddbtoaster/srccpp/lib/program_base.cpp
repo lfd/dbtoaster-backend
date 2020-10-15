@@ -207,6 +207,7 @@ ProgramBase::ProgramBase(int argc, char* argv[]) :
 #ifdef DBT_PROFILE
 	, window_size( run_opts->get_stats_window_size() )
 	, stats_period( run_opts->get_stats_period() )
+    , highlat_count(0)
 	, stats_file( run_opts->get_stats_file() )
 	, exec_stats(new trigger_exec_stats("exec", window_size, 
 										stats_period, stats_file))
@@ -217,6 +218,9 @@ ProgramBase::ProgramBase(int argc, char* argv[]) :
 #endif // DBT_PROFILE
 {
 	buffer_frac = run_opts->buffer_frac;
+#ifdef __linux__
+	ftrace = run_opts->ftrace;
+#endif
 }
 
 void ProgramBase::process_streams() {
@@ -314,8 +318,20 @@ void ProgramBase::process_stream_event(const event_t& _evt) {
 
 			if (tdiff <= run_opts->lower_lat || tdiff >= run_opts->upper_lat) {
 				log_timestamp(tstamp, tdiff, tuple_count);
-			}
 
+#ifdef __linux__
+				if(run_opts->ftrace) {
+					write_check(marker_fd, "*** EXTREMAL LATENCY ***", 24);
+					write_check(trace_fd, "0", 1);
+					if (highlat_count++ >= run_opts->ftrace_rep) {
+						close(trace_fd);
+						close(marker_fd);
+						cout << "Tracepoint maximum latency threshold hit, exiting DBToaster" << endl;
+						exit(0);
+					}
+				}
+#endif
+			}
 			prev_tstamp = tstamp;
 	}
 	tuple_count += 1;

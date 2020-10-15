@@ -229,6 +229,7 @@ private:
 public:
     unsigned int window_size;
     unsigned int stats_period;
+    unsigned int highlat_count;
     string stats_file;
 
     std::shared_ptr<trigger_exec_stats> exec_stats;

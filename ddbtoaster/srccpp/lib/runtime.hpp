@@ -67,7 +67,7 @@ namespace dbtoaster {
       }
     };
 
-    enum  optionIndex { UNKNOWN, HELP, VERBOSE, ASYNC, LOGDIR, LOGTRIG, UNIFIED, OUTFILE, BATCH_SIZE, PARALLEL_INPUT, NO_OUTPUT, TIMEOUT, SAMPLESZ, SAMPLEPRD, STATSFILE, TRACE, TRACEDIR, TRACESTEP, LOGCOUNT, BUFFER_FRAC, ITERATIONS, LOWERLAT, UPPERLAT };
+    enum  optionIndex { UNKNOWN, HELP, VERBOSE, ASYNC, LOGDIR, LOGTRIG, UNIFIED, OUTFILE, BATCH_SIZE, PARALLEL_INPUT, NO_OUTPUT, TIMEOUT, SAMPLESZ, SAMPLEPRD, STATSFILE, TRACE, TRACEDIR, TRACESTEP, LOGCOUNT, BUFFER_FRAC, ITERATIONS, LOWERLAT, UPPERLAT, FTRACE, FTRACE_REP };
 
     const option::Descriptor usage[] = {
     { UNKNOWN,       0,"", "",           Arg::Unknown, "dbtoaster query options:" },
@@ -100,6 +100,10 @@ namespace dbtoaster {
     { LOWERLAT, 0,"","lower-lat",   Arg::Numeric, "  \t--lower-lat=<arg>  \tlower bound [arg] (ns) below which latencies are recorded." },
     { UPPERLAT, 0,"","upper-lat",   Arg::Numeric, "  \t--upper-lat=<arg>  \tupper bound [arg] (ns) above which latencies are recorded." },
 #endif
+#ifdef __linux__
+    { FTRACE,   0,"","ftrace",      Arg::None,     "  \t--ftrace  \tActivate ftrace tracing during measurements" },
+    { FTRACE_REP, 0,"","ftrace-repetitions",   Arg::Numeric, "  \t--ftrace-repetitions=<arg>  \tnumber of maximum latency threshold violations after which ftrace trace is frozen." },
+#endif
     { 0, 0, 0, 0, 0, 0 } };
     
     struct runtime_options {
@@ -123,7 +127,10 @@ namespace dbtoaster {
       unsigned int iterations;
       unsigned long lower_lat, upper_lat;
       int buffer_frac;
-
+#ifdef __linux__
+      bool ftrace;
+      unsigned int ftrace_rep;
+#endif
       // Verbose
       static bool _verbose;
 	  static bool verbose(){ return _verbose; }

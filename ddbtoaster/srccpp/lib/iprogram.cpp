@@ -2,9 +2,48 @@
 #include "iprogram.hpp"
 #include "event.hpp"
 #include <iostream>
+#include <unistd.h>
+#include <fcntl.h>
 #include <time.h>
 
 namespace dbtoaster {
+
+#ifdef __linux__
+void IProgram::start_tracing() {
+	if( ftrace ) {
+		int fd, ffd, s;
+		char line[64];
+	
+		ffd = open(TRACEPATH "current_tracer", O_WRONLY);
+		if (ffd < 0) {
+			cerr << "Cannot open trace control file" << std::endl;
+			exit(-1);
+		}
+
+		write_check(ffd, "nop", 3);
+		fd = open(TRACEPATH "set_ftrace_pid", O_WRONLY);
+		s = sprintf(line, "%d\n", getpid());
+		write_check(fd, line, s);
+		write_check(ffd, "function_graph", 14);
+		close(fd);
+		close(ffd);
+
+		marker_fd = open(TRACEPATH "trace_marker", O_WRONLY);
+		trace_fd = open(TRACEPATH "tracing_on", O_WRONLY);
+		write_check(trace_fd, "1", 1);
+	}
+}
+
+void IProgram::stop_tracing() {
+	if ( ftrace ) {
+		close(trace_fd);
+		close(marker_fd);
+	}
+}
+#else
+void IProgram::start_tracing() {}
+void IProgram::stop_tracing() {}
+#endif
 
 /**
  * Executes the program by launching the virtual method 'process_streams()'.
@@ -20,9 +59,11 @@ void IProgram::run( bool async ) {
 	}
 	else
 	{
+		start_tracing();
 		start_running();
 		process_streams();
 		finished = true;
+		stop_tracing();
 		stop_running();
 	}
 }
