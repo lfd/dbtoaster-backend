@@ -218,7 +218,11 @@ private:
 #else
     inline tstamp_t get_tstamp(void) {
 	tstamp_t val;
+#if defined (__rtems__)
+	clock_gettime(CLOCK_MONOTONIC, &val);
+#else
 	clock_gettime(CLOCK_THREAD_CPUTIME_ID, &val);
+#endif
 	return(val);
     }
 #endif
